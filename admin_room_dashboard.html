@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin - Manage Rooms</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/api-client.js"></script>
+  <script src="js/ms2-room-service.js"></script>
+</head>
+<body>
+  <div class="page" style="max-width: 900px;">
+    <div class="topbar">
+      <div>
+        <h1>Manage Rooms</h1>
+        <p class="subtitle">Add, edit, or remove rooms.</p>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <a href="create_room.html"><button>Add Room</button></a>
+        <a href="dashboard.html"><button class="secondary">Back to dashboard</button></a>
+      </div>
+    </div>
+ 
+    <div id="statusMsg" class="error"></div>
+    <div id="roomList">Loading rooms…</div>
+  </div>
+ 
+  <script>
+    requireLogin();
+ 
+    function goToEdit(room) {
+      const params = new URLSearchParams({ id: room.Room_id, image: room.Room_image });
+      window.location.href = `edit_room.html?${params.toString()}`;
+    }
+ 
+    function renderRooms(rooms) {
+      const list = document.getElementById("roomList");
+ 
+      if (!rooms || rooms.length === 0) {
+        list.innerHTML = "<p>No rooms yet.</p>";
+        return;
+      }
+ 
+      list.innerHTML = "";
+      rooms.forEach(room => {
+        const row = document.createElement("div");
+        row.className = "card";
+        row.style.display = "flex";
+        row.style.justifyContent = "space-between";
+        row.style.alignItems = "center";
+        row.innerHTML = `
+          <div style="display:flex; align-items:center; gap:12px;">
+            <img src="${room.Room_image}" style="width:60px; height:60px; object-fit:cover; border-radius:6px;">
+            <div>
+              <strong>${room.Room_name || `Room ${room.Room_id}`}</strong><br>
+              <span style="color:#5b6478; font-size:0.85rem;">${room.Room_location || ""} &middot; Capacity ${room.Room_capacity}</span>
+            </div>
+          </div>
+          <button type="button" class="editBtn">Edit</button>
+        `;
+        row.querySelector(".editBtn").onclick = () => goToEdit(room);
+        list.appendChild(row);
+      });
+    }
+ 
+    async function loadRooms() {
+      const statusMsg = document.getElementById("statusMsg");
+      try {
+        const rooms = await RoomService.listRooms();
+        renderRooms(rooms);
+      } catch (err) {
+        statusMsg.textContent = `Could not load rooms: ${err.message}`;
+        statusMsg.classList.add("visible");
+      }
+    }
+ 
+    loadRooms();
+  </script>
+</body>
+</html>

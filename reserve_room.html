@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Room Details</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/api-client.js"></script>
+  <script src="js/ms2-room-service.js"></script>
+  <script src="js/ms4-reservation-service.js"></script>
+</head>
+<body>
+  <div class="page" style="max-width: 500px;">
+    <a href="rooms.html"><button class="secondary" style="margin-bottom:20px;">&larr; Back to rooms</button></a>
+
+    <div id="loadError" class="error"></div>
+
+    <div id="roomDetail" class="card">Loading room…</div>
+
+    <div id="bookingSection" class="card" style="display:none;">
+      <h2>Book this room</h2>
+      <div id="bookingError" class="error"></div>
+
+      <label for="bookingDatetime">Date &amp; time</label>
+      <input type="datetime-local" id="bookingDatetime">
+
+      <label for="bookingDuration">Duration (hours)</label>
+      <input type="number" id="bookingDuration" min="1" value="1">
+
+      <label for="bookingPax">Number of people</label>
+      <input type="number" id="bookingPax" min="1" value="1">
+
+      <button type="button" onclick="submitBooking()">Confirm booking</button>
+    </div>
+  </div>
+
+  <script>
+    requireLogin();
+
+    const params = new URLSearchParams(window.location.search);
+    const roomId = params.get("id");
+    const roomImage = params.get("image");
+
+    let currentRoom = null;
+
+    function statusBadge(capacity) {
+      const cap = Number(capacity);
+      if (cap <= 0) {
+        return `<span class="badge badge-full">Fully booked</span>`;
+      }
+      return `<span class="badge badge-available">${cap} spot${cap === 1 ? "" : "s"} available</span>`;
+    }
+
+    function renderRoom(room) {
+      const capacity = Number(room.Room_capacity);
+      document.getElementById("roomDetail").innerHTML = `
+        <img src="${room.Room_image}" alt="Room ${room.Room_id}" style="width:100%; border-radius:8px; margin-bottom:16px;">
+        <h1>Room ${room.Room_id}</h1>
+        ${statusBadge(capacity)}
+      `;
+
+      const bookingSection = document.getElementById("bookingSection");
+      if (capacity > 0) {
+        bookingSection.style.display = "block";
+        document.getElementById("bookingPax").max = capacity;
+      } else {
+        bookingSection.style.display = "none";
+      }
+    }
+
+    async function loadRoom() {
+      const loadError = document.getElementById("loadError");
+
+      if (!roomId || !roomImage) {
+        loadError.textContent = "Missing room information in the URL.";
+        loadError.classList.add("visible");
+        return;
+      }
+
+      try {
+        // GET /api/View/Rooms/{id} returns every item sharing this Room_id
+        // (partition key isn't unique on its own) - find the exact one
+        // that matches the Room_image we came here with.
+        const results = await RoomService.getRoom(roomId);
+        const match = results.find(r => r.Room_image === roomImage);
+
+        if (!match) {
+          loadError.textContent = "Could not find this specific room item.";
+          loadError.classList.add("visible");
+          return;
+        }
+
+        currentRoom = match;
+        renderRoom(match);
+      } catch (err) {
+        loadError.textContent = `Could not load room: ${err.message}`;
+        loadError.classList.add("visible");
+      }
+    }
+
+    async function submitBooking() {
+      const errorBox = document.getElementById("bookingError");
+      errorBox.classList.remove("visible");
+
+      const session = getSession();
+      const userId = session.user.userId;
+      const datetimeRaw = document.getElementById("bookingDatetime").value;
+      const duration = document.getElementById("bookingDuration").value;
+      const pax = document.getElementById("bookingPax").value;
+
+      if (!userId) {
+        errorBox.textContent = "Your session is missing a User ID - please log out and back in.";
+        errorBox.classList.add("visible");
+        return;
+      }
+
+      if (!datetimeRaw || !duration || !pax) {
+        errorBox.textContent = "All fields are required.";
+        errorBox.classList.add("visible");
+        return;
+      }
+
+      const roomDatetime = datetimeRaw.replace("T", " ") + ":00";
+
+      const reservation = {
+        User_id: Number(userId),
+        Room_id: currentRoom.Room_id,
+        Room_image: currentRoom.Room_image,
+        Room_datetime: roomDatetime,
+        Room_duration: Number(duration),
+        Pax_count: Number(pax)
+      };
+
+      try {
+        await ReservationService.createReservation(reservation);
+        alert("Booking successful! You will be redirected to the rooms list.");
+        window.location.href = "rooms.html";
+      } catch (err) {
+        errorBox.textContent = err.message || "Booking failed.";
+        errorBox.classList.add("visible");
+      }
+    }
+
+    loadRoom();
+  </script>
+</body>
+</html>

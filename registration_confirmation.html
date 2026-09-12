@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Portal Login</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/api-client.js"></script>
+  <script src="js/ms1-user-service.js"></script>
+</head>
+<body>
+  <div class="page" style="max-width: 420px;">
+    <div class="card">
+      <h1>Register</h1>
+      <p class="subtitle">Enter your personal details to continue.</p>
+
+      <div id="confirmationError" class="error"></div>
+
+      <label for="Email">Email</label>
+      <input type="email" id="Email" placeholder="test@gmail.com">
+
+      <label for="Code">Confirmation Code</label>
+      <input type="text" id="Code" placeholder="Enter confirmation code">
+
+      <button type="button" onclick="handleConfirmation()">Confirm Email</button>
+      <p class="subtitle">Already have an account? <a href="login.html">Login here</a>.</p>
+    </div>
+  </div>
+
+  <script>
+    // If already logged in, skip straight to the dashboard
+    if (isLoggedIn()) {
+      window.location.href = "dashboard.html";
+    }
+
+    async function handleConfirmation() {
+      const errorBox = document.getElementById("confirmationError");
+      errorBox.classList.remove("visible");
+
+      const email = document.getElementById("Email").value;
+      const confirmationCode = document.getElementById("Code").value;
+
+      if (!email || !confirmationCode) {
+        errorBox.textContent = "All fields are required.";
+        errorBox.classList.add("visible");
+        return;
+      }
+
+      try {
+        await UserService.confirmSignup({
+            email, confirmationCode
+        });
+        window.location.href = "login.html";
+      } catch (err) {
+        errorBox.textContent = err.message || "Confirmation failed.";
+        errorBox.classList.add("visible");
+      }
+    }
+  </script>
+</body>
+</html>

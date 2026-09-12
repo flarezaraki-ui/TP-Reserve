@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TP Reserve</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/api-client.js"></script>
+  <script src="js/ms1-user-service.js"></script>
+  <script src="js/ms2-room-service.js"></script>
+  <script src="js/ms3-event-service.js"></script>
+  <script src="js/ms4-reservation-service.js"></script>
+</head>
+<body>
+  <div class="page">
+    <div class="topbar">
+      <div>
+        <h1>Dashboard</h1>
+        <p class="subtitle" id="welcomeMsg">Loading your details…</p>
+      </div>
+      <button class="secondary" onclick="logout()">Log out</button>
+      <button class="secondary" onclick="window.location.href='profile.html'">Profile</button>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Rooms</h2>
+        <button onclick="window.location.href='admin_room_dashboard.html'">Admin Room Functions</button>
+        <div id="roomsList" style="width: 600px;">Loading rooms…</div>
+        <a href="rooms.html"><button>View all rooms</button></a>
+      </div>
+
+      <div class="card">
+        <h2>Events</h2>
+        <button onclick="window.location.href='admin_event_dashboard.html'">Admin Event Functions</button>
+        <div id="eventsList" style="width: 600px;">Loading events…</div>
+        <a href="events.html"><button>View all events</button></a>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>My Reservations</h2>
+      <div id="reservationsList">Loading reservations…</div>
+      <a href="reservations.html"><button>View all reservations</button></a>
+    </div>
+  </div>
+
+<script>
+    requireLogin(); 
+
+    const session = getSession();
+    document.getElementById("welcomeMsg").textContent =
+      `Signed in as ${session.user.prefered_username || session.user.email || "user"}`;
+
+    function renderList(containerId, items, labelFunc, actionFunc) {
+      const el = document.getElementById(containerId);
+      if (!items || items.length === 0) {
+        el.textContent = "Nothing to show yet.";
+        return;
+      }
+      el.innerHTML = "";
+      items.forEach(item => {
+        const row = document.createElement("div");
+        row.className = "list-item";
+        
+        // Changed to allow HTML formatting for cleaner structure
+        const infoDiv = document.createElement("div");
+        infoDiv.innerHTML = labelFunc(item);
+        row.appendChild(infoDiv);
+
+        if (actionFunc) {
+          const action = actionFunc(item);
+          const actionArray = Array.isArray(action) ? action : [action];
+
+          actionArray.forEach(action => {
+            const button = document.createElement("button");
+            button.textContent = action.label;
+            button.onclick = action.onClick;
+            button.style.marginLeft = "8px";
+            row.appendChild(button);
+          });
+        }
+
+        el.appendChild(row);
+      });
+    }
+
+    async function loadDashboard() {
+      try {
+        const rooms = await RoomService.listRooms();
+        // Updated to target correct JSON keys and format as HTML
+        renderList("roomsList", rooms, r => 
+          `<strong>${r.Room_name || 'Unnamed Room'}</strong><br/>
+           Capacity: ${r.Room_capacity || 'N/A'}<br/>
+           Location: ${r.Room_location || 'N/A'}`
+        );
+      } catch (err) {
+        document.getElementById("roomsList").textContent = `Error: ${err.message}`;
+      }
+
+      try {
+        const events = await EventService.listEvents();
+        // Updated to target correct JSON keys and format as HTML
+        renderList("eventsList", events, e => 
+          `<strong>${e.Event_name || 'Unnamed Event'}</strong><br/>
+           Capacity: ${e.Event_capacity || 'N/A'}<br/>
+           Location: ${e.Event_location || 'N/A'}`
+        );
+      } catch (err) {
+        document.getElementById("eventsList").textContent = `Error: ${err.message}`;
+      }
+
+      try {
+        const [roomResponse, eventResponse] = await Promise.all([
+          ReservationService.ListUserRoomReservations(session.user.userId),
+          ReservationService.ListUserEventReservations(session.user.userId)
+        ]);
+
+        const roomReservations = roomResponse.details.map(r => ({ ...r, type: "room" }));
+        const eventReservations = eventResponse.details.map(r => ({ ...r, type: "event" }));
+        const allReservations = [...roomReservations, ...eventReservations];
+
+        renderList("reservationsList", allReservations, r =>
+          r.type === "room"
+            ? `Room Booking #${r.Room_booking_id} - Room ${r.Room_id}`
+            : `Event Booking #${r.Event_booking_id} - Event ${r.Event_id}`,
+          r => [{
+            label: "View",
+            onClick: () => {
+              const idParam = r.type === "room" ? r.Room_booking_id : r.Event_booking_id;
+              window.location.href = `view_${r.type}_reservation.html?id=${idParam}`;
+            },},
+          {
+            label: "Modify",
+            onClick: () => {
+              const idParam = r.type === "room" ? r.Room_booking_id : r.Event_booking_id;
+              window.location.href = `modify_${r.type}_reservation.html?id=${idParam}&type=${r.type}`;
+            }
+          }]
+        );
+      } catch (err) {
+        document.getElementById("reservationsList").textContent = `Error: ${err.message}`;
+      }
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>

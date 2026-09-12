@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TP Reserve</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/api-client.js"></script>
+    <script src="js/ms1-user-service.js"></script>
+</head>
+<body>
+  <div class="page">
+    <div class="topbar">
+      <div>
+        <h1>Profile</h1>
+        
+      </div>
+      
+      <button class="secondary" onclick="window.location.href='dashboard.html'">Back to Dashboard</button>
+    </div>
+    <div class = "card">
+        <h2>User Profile</h2>
+        <div id="statusMsg" class="error"></div>
+        <div class="subtitle" id="loadUserData">Loading your details…</div>
+    </div>
+    <div>
+      <button class="secondary" onclick="window.location.href='edit_profile.html'">Edit Profile</button>
+    </div>
+    <div class="card">
+        <h2>View Rooms/Events/Reservations</h2>
+        <button onclick="window.location.href='rooms.html'">View Rooms</button>
+        <button onclick="window.location.href='events.html'">View Events</button>
+        <button onclick="window.location.href='reservations.html'">View Reservations</button>
+    </div>
+    
+  </div>
+  <script>
+    requireLogin();
+    const session = getSession();
+    function renderUser(user){
+        console.log(user);
+        const userDisplay = document.getElementById("loadUserData");
+
+        const userData = user.details[0];
+        userDisplay.innerHTML = `
+        <div>
+            <img src="${userData.User_picture}" alt="User Picture" style = "width: 100px; height: auto;"><br>
+            <strong>User ID:</strong> ${session.user.userId}<br>
+            <strong>Email:</strong> ${session.user.email}<br>
+            <strong>Preferred Username:</strong> ${session.user.prefered_username || "N/A"}<br>
+            
+        </div>
+        `;
+
+    }
+
+    function modifyProfile() {
+      window.location.href = "edit_profile.html";
+    }
+
+    async function loadUser() {
+      const statusMsg = document.getElementById("statusMsg");
+      try {
+        const user = await UserService.getProfile(session.user.userId);
+        
+        renderUser(user);
+      } catch (err) {
+        statusMsg.textContent = `Could not load user details: ${err.message}`;
+        statusMsg.classList.add("visible");
+      }
+    }
+
+  
+    loadUser();
+
+  </script>
+    
+</body>
+</html>

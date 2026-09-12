@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Manage Reservations</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/api-client.js"></script>
+  <script src="js/ms1-user-service.js"></script>
+  <script src="js/ms4-reservation-service.js"></script>
+</head>
+<body>
+  <div class="page" style="max-width: 1000px;">
+    <div class="topbar">
+      <div>
+        <h1>My Reservations</h1>
+        <p class="subtitle">View your room and event reservations.</p>
+      </div>
+      <a href="dashboard.html"><button class="secondary">Back to dashboard</button></a>
+    </div>
+
+    <div id="statusMsg" class="error"></div>
+    <div id="reservationsList" >Loading reservations…</div>
+  </div>
+
+  <script>
+    requireLogin();
+    const session = getSession();
+
+    function renderList(containerId, items, labelFn, actionFn) {
+    const el = document.getElementById(containerId);
+    if (!items || items.length === 0) {
+        el.textContent = "Nothing to show yet.";
+        return;
+    }
+    el.innerHTML = "";
+    items.forEach(item => {
+        const row = document.createElement("div");
+        row.className = "list-item";
+
+        const label = document.createElement("span");
+        label.innerHTML = labelFn(item);
+        row.appendChild(label);
+
+        if (actionFn) {
+        const action = actionFn(item);
+        const button = document.createElement("button");
+        button.textContent = action.label;
+        button.onclick = action.onClick;
+        row.appendChild(button);
+        }
+
+        el.appendChild(row);
+    });
+    }
+
+    async function loadDashboard() {
+    try{
+        const [roomResponse, eventResponse] = await Promise.all([
+          ReservationService.ListUserRoomReservations(session.user.userId),
+          ReservationService.ListUserEventReservations(session.user.userId)
+        ]);
+
+        const roomReservations = roomResponse.details.map(r => ({ ...r, type: "room" }));
+        const eventReservations = eventResponse.details.map(r => ({ ...r, type: "event" }));
+        const allReservations = [...roomReservations, ...eventReservations];
+
+        renderList("reservationsList", allReservations, r =>
+          r.type === "room"
+            ? `Room Booking #${r.Room_booking_id} - Room ${r.Room_id}`
+            : `Event Booking #${r.Event_booking_id} - Event ${r.Event_id}`,
+          r => ({
+            label: "View",
+            onClick: () => {
+              const idParam = r.type === "room" ? r.Room_booking_id : r.Event_booking_id;
+              const imageParam = r.type === "room" ? r.Room_image : r.Event_image;
+              window.location.href = `view_${r.type}_reservation.html?id=${idParam}&image=${imageParam}`;
+            }
+          }
+        ));
+    }
+    catch (error) {
+        console.error("Error fetching reservations:", error);
+        document.getElementById("reservationsList").textContent = "Error loading reservations.";
+    }
+}
+    loadDashboard();
+  </script>
+</body>
+</html>
+
+
+<!-- 
+      try {
+        const [roomResponse, eventResponse] = await Promise.all([
+          ReservationService.ListUserRoomReservations(session.user.userId),
+          ReservationService.ListUserEventReservations(session.user.userId)
+        ]);
+
+        const roomReservations = roomResponse.details.map(r => ({ ...r, type: "room" }));
+        const eventReservations = eventResponse.details.map(r => ({ ...r, type: "event" }));
+        const allReservations = [...roomReservations, ...eventReservations];
+
+        renderList("reservationsList", allReservations, r =>
+          r.type === "room"
+            ? `Room Booking #${r.Room_booking_id} - Room ${r.Room_id}`
+            : `Event Booking #${r.Event_booking_id} - Event ${r.Event_id}`,
+          r => ({
+            label: "View",
+            onClick: () => {
+              const idParam = r.type === "room" ? r.Room_booking_id : r.Event_booking_id;
+              const imageParam = r.type === "room" ? r.Room_image : r.Event_image;
+              window.location.href = `view_${r.type}_reservation.html?id=${idParam}&image=${imageParam}`;
+            }
+          }
+        ));
+      } catch (err) {
+        document.getElementById("reservationsList").textContent = `Error: ${err.message}`;
+      } 
+-->

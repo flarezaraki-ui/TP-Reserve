@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Add Room</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/api-client.js"></script>
+  <script src="js/ms3-event-service.js"></script>
+</head>
+<body>
+  <div class="page" style="max-width: 500px;">
+    <a href="admin_event_dashboard.html"><button class="secondary" style="margin-bottom:20px;">&larr; Back to events</button></a>
+
+    <div class="card">
+      <h1>Add a new Event</h1>
+      <div id="formError" class="error"></div>
+
+      <label for="eventId">Event ID</label>
+      <input type="text" id="eventId">
+
+      <label for="eventImage">Event Image URL</label>
+      <input type="text" id="eventImage">
+
+      <label for="eventName">Event Name</label>
+      <input type="text" id="eventName">
+
+      <label for="eventLocation">Location</label>
+      <input type="text" id="eventLocation">
+
+      <label for="eventDescription">Description</label>
+      <input type="text" id="eventDescription">
+
+      <label for="eventCapacity">Capacity</label>
+      <input type="number" id="eventCapacity" min="1">
+
+      <label for="eventDate">Date-Time</label>
+      <input type="datetime-local" id="eventDate">
+
+      <label for="eventDuration">Duration (in hours)</label>
+      <input type="number" id="eventDuration" min="0">
+
+      <button type="button" onclick="createNewEvent()">Create Event</button>
+    </div>
+  </div>
+
+  <script>
+    requireLogin();
+
+    async function createNewEvent() {
+      const errorBox = document.getElementById("formError");
+      errorBox.classList.remove("visible");
+      const event = {
+        Event_id: document.getElementById("eventId").value.trim(),
+        Event_image: document.getElementById("eventImage").value.trim(),
+        Event_name: document.getElementById("eventName").value.trim(),
+        Event_location: document.getElementById("eventLocation").value.trim(),
+        Event_description: document.getElementById("eventDescription").value.trim(),
+        Event_capacity: Number(document.getElementById("eventCapacity").value),
+        Event_datetime: String(document.getElementById("eventDate").value + ":00Z"),
+        Event_duration: Number(document.getElementById("eventDuration").value)
+      };
+
+      if (!event.Event_id || !event.Event_image) {
+        errorBox.textContent = "Event ID and Event Image are both required.";
+        errorBox.classList.add("visible");
+        return;
+      }
+
+      try {
+        await EventService.createNewEvent(event);
+        window.location.href = "admin_event_dashboard.html";
+        
+      } catch (err) {
+        errorBox.textContent = err.message || "Create failed.";
+        errorBox.classList.add("visible");
+      }
+    }
+  </script>
+</body>
+</html>

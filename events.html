@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Events Available</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/api-client.js"></script>
+  <script src="js/ms3-event-service.js"></script>
+</head>
+<body>
+  <div class="page" style="max-width: 1000px;">
+    <div class="topbar">
+      <div>
+        <h1>Events Available</h1>
+        <p class="subtitle">Select an event to view its details and register.</p>
+      </div>
+      <a href="dashboard.html"><button class="secondary">Back to dashboard</button></a>
+    </div>
+ 
+    <div id="statusMsg" class="error"></div>
+    <div id="eventGrid" class="room-grid">Loading events…</div>
+  </div>
+ 
+  <script>
+    requireLogin();
+
+    function statusBadge(capacity) {
+      const cap = Number(capacity);
+      if (cap <= 0) {
+        return `<span class="badge badge-full">Fully booked</span>`;
+      }
+      return `<span class="badge badge-available">${cap} spot${cap === 1 ? "" : "s"} available</span>`;
+    }
+    function goToEvent(eventId, eventImage) {
+      const params = new URLSearchParams({ id: eventId, image: eventImage });
+      window.location.href = `reserve_event.html?${params.toString()}`;
+    }
+
+    async function renderEvents(events) {
+      const eventsList = document.getElementById("eventGrid");
+      if (!events || events.length === 0) {
+        eventsList.innerHTML = "<p>No Events found.</p>";
+        return;
+      }
+
+      eventsList.innerHTML = "";
+      events.forEach(event => {
+        const capacity = Number(event.Event_capacity);
+        const card = document.createElement("div");
+        card.className = "event-card";
+        card.style.cursor = "pointer";
+        card.onclick = () => goToEvent(event.Event_id, event.Event_image);
+        card.innerHTML = `
+          <h3>${event.Event_name}</h3>
+          <p>${event.Event_location}</p>
+          <p>${event.Event_duration}</p>
+          ${statusBadge(capacity)}
+        `;
+        eventsList.appendChild(card);
+      });
+    }
+
+    async function loadEvents(){
+      const statusMsg = document.getElementById("statusMsg");
+      try {
+        const events = await EventService.listEvents();
+        renderEvents(events);
+      } catch (err) {
+        statusMsg.textContent = `Could not load events: ${err.message}`;
+        statusMsg.classList.add("visible");
+      }
+    }
+    loadEvents();
+  </script>
+</body>
+</html>
+
